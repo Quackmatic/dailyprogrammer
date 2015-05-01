@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Challenge #188 [Easy] Solution (Box Plot Generator)</title>
+		<style>
+			body {
+				text-align: center;
+			}
+			
+			.input-region {
+				width: 70%;
+				margin: 0 auto;
+			}
+			
+			#input-box {
+				width: 100%;
+				margin: 1em 1em;
+			}
+			
+			#input-generate {
+				float: right;
+			}
+			
+			.output-region {
+				width: 70%;
+				margin: 0 auto;
+				border: 1px solid #666;
+			}
+		</style>
+		 <meta charset="UTF-8"> 
+	</head>
+	<body>
+		<h1>Elite6809's Box Plot Generator</h1>
+		<div class="input-region">
+			<textarea id="input-box" rows="4" cols="80">Enter your data set here, delimited by spaces and/or newlines.</textarea>
+			<button id="input-generate">Generate</button>
+			<div style="clear: both;"></div>
+		</div>
+		<canvas class="output-region" id="output-canvas">
+		
+		</canvas>
+		<script type="text/javascript">
+			var inputBox = document.getElementById('input-box');
+			var generateButton = document.getElementById('input-generate');
+			var outputCanvas = document.getElementById('output-canvas');
+			
+			generateButton.onclick = generatePlot;
+			resetCanvasSize();
+			
+			function resetCanvasSize() {
+				outputCanvas.width = outputCanvas.clientWidth;
+				outputCanvas.height = 100;
+			}
+			
+			function calculateQuartiles(dataPoints) {
+				var n = dataPoints.length;
+				return [dataPoints[0],
+					dataPoints[Math.ceil(n * 0.25) - 1],
+					dataPoints[Math.ceil(n * 0.5) - 1],
+					dataPoints[Math.ceil(n * 0.75) - 1],
+					dataPoints[n - 1]];
+			}
+			
+			function calculateData(dataPoints, q) {
+				var iqr = q[3] - q[1];
+				var lowOutliers = dataPoints
+					.filter(x => x < q[1] - 1.5 * iqr);
+				var highOutliers = dataPoints
+					.filter(x => x > q[3] + 1.5 * iqr);
+				return {
+					plotted: dataPoints
+					.slice(lowOutliers.length, dataPoints.length - highOutliers.length),
+					outliers: lowOutliers.concat(highOutliers)
+				};
+			}
+			
+			function generatePlot() {
+				var c = outputCanvas.getContext('2d');
+				var dataPoints = inputBox.value
+					.split(/[,; \r\n]+/)
+					.map(parseFloat)
+					.sort((a, b) => a - b);
+			
+				resetCanvasSize();
+				var width = outputCanvas.width;
+				var height = outputCanvas.height;
+				
+				var q = calculateQuartiles(dataPoints);
+				
+				var data = calculateData(dataPoints, q);
+				var first = data.plotted[0], last = data.plotted[data.plotted.length - 1];
+				
+				var drawBegin = 20, drawEnd = width - 20;
+				var scale = x => drawBegin + ((drawEnd - drawBegin) * (x - q[0])) / (q[4] - q[0]);
+				
+				var baseStart = scale(first), baseEnd = scale(last);
+				var boxStart = scale(q[1]), boxEnd = scale(q[3]);
+				var medianLine = scale(q[2]);
+				
+				c.font = '17px serif';
+				c.textAlign = 'center';
+				c.strokeStyle = c.fillStyle = '#000';
+				c.beginPath();
+				c.moveTo(baseStart, height / 2);
+				c.lineTo(baseEnd, height / 2);
+				c.moveTo(baseStart, height / 2 - 10);
+				c.lineTo(baseStart, height / 2 + 10);
+				c.moveTo(baseEnd, height / 2 - 10);
+				c.lineTo(baseEnd, height / 2 + 10);
+				c.rect(boxStart, height / 2 - 20, boxEnd - boxStart, 40);
+				c.moveTo(medianLine, height / 2 - 30);
+				c.lineTo(medianLine, height / 2 + 30);
+				c.closePath();
+				c.stroke();
+				
+				c.fillText(first, baseStart, height / 2 - 15);
+				c.fillText(q[1], boxStart, height / 2 - 25);
+				c.fillText(q[2], medianLine, height / 2 - 35);
+				c.fillText(q[3], boxEnd, height / 2 - 25);
+				c.fillText(last, baseEnd, height / 2 - 15);
+				
+				c.strokeStyle = c.fillStyle = '#f00';
+				data.outliers.forEach(function(x) {
+					var fx = scale(x);
+					c.beginPath();
+					c.moveTo(fx - 6, height / 2 - 6);
+					c.lineTo(fx + 6, height / 2 + 6);
+					c.moveTo(fx + 6, height / 2 - 6);
+					c.lineTo(fx - 6, height / 2 + 6);
+					c.closePath();
+					c.stroke();
+					c.fillText(x, fx, height / 2 - 10);
+				});
+				
+			}
+		</script>
+	</body>
+</html>
